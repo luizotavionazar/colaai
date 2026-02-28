@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ColaaiApplication<colaai>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "br.com.luizotavionazar.colaai.ColaaiApplication",
+            "projectName": "colaai",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

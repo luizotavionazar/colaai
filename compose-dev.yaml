@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:18.2-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${NOME_BD}
+      POSTGRES_USER: ${USUARIO_BD}
+      POSTGRES_PASSWORD: ${SENHA_BD}
+      TZ: America/Sao_Paulo
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:9.12.0
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${EMAIL_POSTGRES}
+      PGADMIN_DEFAULT_PASSWORD: ${SENHA_POSTGRES}
+      TZ: America/Sao_Paulo
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  pgadmin_data:
