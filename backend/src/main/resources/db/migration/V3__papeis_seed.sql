@@ -1,0 +1,5 @@
+INSERT INTO "papeis" ("papel") VALUES ('ADMIN') ON CONFLICT ("papel") DO NOTHING;
+
+INSERT INTO "papeis" ("papel") VALUES ('CLIENTE') ON CONFLICT ("papel") DO NOTHING;
+
+INSERT INTO "papeis" ("papel") VALUES ('ORGANIZADOR') ON CONFLICT ("papel") DO NOTHING;
