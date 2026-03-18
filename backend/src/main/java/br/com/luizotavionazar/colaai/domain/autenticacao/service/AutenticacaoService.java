@@ -4,8 +4,9 @@ import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroRequest;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroResponse;
 import br.com.luizotavionazar.colaai.domain.endereco.entity.Cidade;
 import br.com.luizotavionazar.colaai.domain.endereco.entity.Endereco;
-import br.com.luizotavionazar.colaai.domain.endereco.repository.CidadeRepository;
 import br.com.luizotavionazar.colaai.domain.endereco.service.EnderecoService;
+import br.com.luizotavionazar.colaai.domain.endereco.repository.CidadeRepository;
+import br.com.luizotavionazar.colaai.domain.pessoa.service.PessoaService;
 import br.com.luizotavionazar.colaai.domain.usuario.entity.Usuario;
 import br.com.luizotavionazar.colaai.domain.usuario.repository.UsuarioRepository;
 import br.com.luizotavionazar.colaai.domain.usuario.service.UsuarioService;
@@ -21,8 +22,9 @@ public class AutenticacaoService {
 
     private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
-    private final CidadeRepository cidadeRepository;
     private final EnderecoService enderecoService;
+    private final CidadeRepository cidadeRepository;
+    private final PessoaService pessoaService;
 
     @Transactional
     public CadastroResponse cadastrar(CadastroRequest request) {
@@ -42,29 +44,26 @@ public class AutenticacaoService {
 
         Endereco endereco = enderecoService.cadastrarBasico(request.codIbgeCidade());
 
-        // Próximo passo:
-        // criar Pessoa vinculando:
-        // - request.nomeNormalizado()
-        // - request.telefoneNormalizado()
-        // - request.sexoNormalizado()
-        // - request.dataNascimento()
-        // - usuario
-        // - endereco
+        pessoaService.cadastrarBasico(request, usuario, endereco);
 
         return CadastroResponse.from(usuario, request, cidade);
     }
+
+    private void validarCidade(CadastroRequest request) {
+    if (request.codIbgeCidade() == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cidade é obrigatória");
+    }
+
+    if (!cidadeRepository.existsByCodIbge(request.codIbgeCidade())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cidade não encontrada");
+    }
+}
 
     private void validarTelefone(CadastroRequest request) {
         String telefone = request.telefoneNormalizado();
 
         if (telefone.length() < 10 || telefone.length() > 11) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone inválido");
-        }
-    }
-
-    private void validarCidade(CadastroRequest request) {
-        if (request.codIbgeCidade() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cidade é obrigatória");
         }
     }
 }

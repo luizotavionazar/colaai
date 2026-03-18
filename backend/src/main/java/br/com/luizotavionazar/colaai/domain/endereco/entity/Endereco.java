@@ -32,7 +32,7 @@ public class Endereco {
     @Column(name = "logradouro", length = 120)
     private String logradouro;
 
-    @Column(name = "bairro", length = 120)
+    @Column(name = "bairro", length = 100)
     private String bairro;
 
     @Column(name = "numero", length = 20)

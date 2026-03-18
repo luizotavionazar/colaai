@@ -19,24 +19,24 @@ public class UsuarioService {
     @Transactional
     public Usuario cadastrar(String email, String senha) {
         String emailNormalizado = email.trim().toLowerCase();
-    
+
         if (usuarioRepository.existsByEmail(emailNormalizado)) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
-    
+
         Usuario usuario = Usuario.builder()
                 .email(emailNormalizado)
                 .senhaHash(passwordEncoder.encode(senha))
                 .build();
-    
+
         atribuirPapel(usuario, PapelService.CLIENTE);
-    
+
         return usuarioRepository.save(usuario);
     }
 
     @Transactional
-    public Usuario tornarOrganizador(Integer usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+    public Usuario tornarOrganizador(Integer idUsuario) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
                 .orElseThrow(() -> new IllegalArgumentException("! Usuário não encontrado"));
 
         atribuirPapel(usuario, PapelService.ORGANIZADOR);
@@ -51,10 +51,11 @@ public class UsuarioService {
         boolean jaTem = usuario.getPapeis().stream()
                 .anyMatch(pu -> pu.getPapel().getId().equals(papel.getId()));
 
-        if (jaTem) return;
+        if (jaTem)
+            return;
 
         PapelUsuario link = PapelUsuario.builder()
-                .id(new PapelUsuarioId(usuario.getId(), papel.getId()))
+                .id(new PapelidUsuario(usuario.getId(), papel.getId()))
                 .usuario(usuario)
                 .papel(papel)
                 .build();

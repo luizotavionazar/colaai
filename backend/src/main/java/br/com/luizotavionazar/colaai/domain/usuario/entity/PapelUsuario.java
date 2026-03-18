@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class PapelUsuario {
     @EmbeddedId
     @EqualsAndHashCode.Include
-    private PapelUsuarioId id;
+    private PapelidUsuario id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("idUsuario")
