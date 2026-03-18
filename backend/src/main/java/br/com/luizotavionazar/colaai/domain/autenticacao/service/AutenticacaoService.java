@@ -2,6 +2,9 @@ package br.com.luizotavionazar.colaai.domain.autenticacao.service;
 
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroRequest;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroResponse;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginRequest;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginResponse;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import br.com.luizotavionazar.colaai.domain.endereco.entity.Cidade;
 import br.com.luizotavionazar.colaai.domain.endereco.entity.Endereco;
 import br.com.luizotavionazar.colaai.domain.endereco.service.EnderecoService;
@@ -25,6 +28,7 @@ public class AutenticacaoService {
     private final EnderecoService enderecoService;
     private final CidadeRepository cidadeRepository;
     private final PessoaService pessoaService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public CadastroResponse cadastrar(CadastroRequest request) {
@@ -65,5 +69,25 @@ public class AutenticacaoService {
         if (telefone.length() < 10 || telefone.length() > 11) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone inválido");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+        String emailNormalizado = request.emailNormalizado();
+
+        Usuario usuario = usuarioRepository.findByEmail(emailNormalizado)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "E-mail inválido ou senha incorreta"
+                ));
+
+        if (!passwordEncoder.matches(request.senha(), usuario.getSenhaHash())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "E-mail inválido ou senha incorreta"
+            );
+        }
+
+        return LoginResponse.from(usuario);
     }
 }

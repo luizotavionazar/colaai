@@ -8,3 +8,8 @@ export async function cadastrar(dados) {
   const response = await api.post('/auth/cadastro', dados)
   return response.data
 }
+
+export async function login(dados) {
+  const response = await api.post('/auth/login', dados)
+  return response.data
+}

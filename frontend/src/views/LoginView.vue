@@ -32,7 +32,7 @@
                 placeholder="Digite sua senha"
                 required
               />
-            
+
               <button
                 type="button"
                 class="btn btn-sm border-0 bg-transparent position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
@@ -42,35 +42,23 @@
                 <i :class="mostrarSenha ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
               </button>
             </div>
-          
-            <div class="text-left mt-1">
-              <RouterLink
-                to="/recuperar-cadastro"
-                class="text-decoration-none link-recuperar">
-                Esqueceu a senha? Recupere aqui
-              </RouterLink>
-            </div>
+          </div>
+
+          <div v-if="mensagem" class="alert alert-danger py-2 small" role="alert">
+            {{ mensagem }}
           </div>
 
           <div class="d-grid mb-3">
-            <button type="submit" class="btn btn-primary">
-              Entrar
+            <button type="submit" class="btn btn-primary" :disabled="carregando">
+              {{ carregando ? 'Entrando...' : 'Entrar' }}
             </button>
           </div>
 
           <div class="text-center mt-3">
-            <RouterLink 
-              to="/cadastro" 
-              class="text-decoration-none">
+            <RouterLink to="/cadastro" class="text-decoration-none">
               Não tem conta? Cadastre-se
             </RouterLink>
           </div>
-
-          
-
-          <p v-if="mensagem" class="text-danger small text-center mb-0">
-            {{ mensagem }}
-          </p>
         </form>
       </div>
     </div>
@@ -78,23 +66,45 @@
 </template>
 
 <script setup>
-  import { ref } from 'vue'
-  
-  const email = ref('')
-  const senha = ref('')
-  const mensagem = ref('')
-  const mostrarSenha = ref(false)
-  
-  function fazerLogin() {
-    if (!email.value || !senha.value) {
-      mensagem.value = 'Preencha e-mail e senha.'
-      return
-    }
-  
-    mensagem.value = ''
-    console.log('Login enviado:', {
-      email: email.value,
+import { ref } from 'vue'
+import { login } from '../services/autenticacaoService'
+
+const email = ref('')
+const senha = ref('')
+const mensagem = ref('')
+const carregando = ref(false)
+const mostrarSenha = ref(false)
+
+async function fazerLogin() {
+  mensagem.value = ''
+
+  if (!email.value || !senha.value) {
+    mensagem.value = 'Preencha e-mail e senha.'
+    return
+  }
+
+  carregando.value = true
+
+  try {
+    const resposta = await login({
+      email: email.value.trim(),
       senha: senha.value
     })
+
+    console.log('Login realizado:', resposta)
+
+    // próximo passo:
+    // salvar token ou dados do usuário
+    // redirecionar para dashboard/home
+  } catch (e) {
+    mensagem.value =
+      e?.response?.data?.message ||
+      e?.response?.data?.erro ||
+      'Não foi possível realizar o login.'
+
+    console.error(e)
+  } finally {
+    carregando.value = false
   }
+}
 </script>

@@ -2,6 +2,8 @@ package br.com.luizotavionazar.colaai.api.autenticacao.controller;
 
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroRequest;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroResponse;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginRequest;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginResponse;
 import br.com.luizotavionazar.colaai.domain.autenticacao.service.AutenticacaoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,5 +25,12 @@ public class AutenticacaoController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = autenticacaoService.login(request);
+    
+        return ResponseEntity.ok(response);
     }
 }
