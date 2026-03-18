@@ -3,7 +3,6 @@ package br.com.luizotavionazar.colaai.domain.usuario.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.*;
-
 import java.io.Serializable;
 
 @Getter

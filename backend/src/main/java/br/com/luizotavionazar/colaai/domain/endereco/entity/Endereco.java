@@ -1,4 +1,4 @@
-package br.com.luizotavionazar.colaai.domain.usuario.entity;
+package br.com.luizotavionazar.colaai.domain.endereco.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,16 +13,33 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
-@Table(name = "papeis")
-public class Papel {
+@Table(name = "enderecos")
+public class Endereco {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include
     @Column(name = "id", nullable = false, updatable = false)
     private Integer id;
 
-    @Column(name = "papel", nullable = false, length = 30, unique = true)
-    private String papel;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "idCidade", nullable = false)
+    private Cidade cidade;
+
+    @Column(name = "cep", length = 8)
+    private String cep;
+
+    @Column(name = "logradouro", length = 120)
+    private String logradouro;
+
+    @Column(name = "bairro", length = 120)
+    private String bairro;
+
+    @Column(name = "numero", length = 20)
+    private String numero;
+
+    @Column(name = "complemento", length = 100)
+    private String complemento;
 
     @CreationTimestamp
     @Column(name = "dataCriacao", updatable = false)
