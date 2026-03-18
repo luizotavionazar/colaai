@@ -11,3 +11,14 @@ body {
 .form-control.campo-uf {
   padding: 0.375rem 0.5rem;
 }
+
+.campo-senha::-ms-reveal,
+.campo-senha::-ms-clear {
+  display: none;
+}
+
+.campo-senha::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}

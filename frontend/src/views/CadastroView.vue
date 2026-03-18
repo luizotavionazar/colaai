@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-light min-vh-100 d-flex align-items-center justify-content-center py-5">
+  <div class="min-vh-100 d-flex align-items-center justify-content-center py-5" style="background-color: #eef4ff;">
     <div class="card shadow border-0 rounded-4" style="width: 100%; max-width: 720px;">
       <div class="card-body p-4 p-md-5">
         <div class="text-center mb-4">
@@ -37,10 +37,13 @@
               <label for="telefone" class="form-label">Telefone</label>
               <input
                 id="telefone"
-                v-model="form.telefone"
+                :value="form.telefone"
+                @input="aoDigitarTelefone"
+                @keypress="bloquearLetrasNoTelefone"
                 type="text"
                 class="form-control"
                 placeholder="(00) 00000-0000"
+                maxlength="15"
                 required
               />
             </div>
@@ -76,7 +79,7 @@
                 id="cidade"
                 v-model="form.idCidade"
                 class="form-select"
-                :disabled="carregandoCidades"
+                :disabled="carregandoCidades || carregando"
                 required
               >
                 <option value="">
@@ -101,36 +104,85 @@
                 type="text"
                 class="form-control campo-uf"
                 readonly
-                disabled
               />
             </div>
 
             <hr>
 
             <div class="col-md-6 mb-3">
-                <label for="senha" class="form-label">Crie sua Senha</label>
+              <label for="senha" class="form-label">Crie sua senha</label>
+                        
+              <div class="position-relative">
                 <input
-                    id="senha"
-                    v-model="form.senha"
-                    type="password"
-                    class="form-control"
-                    placeholder="Digite sua senha"
-                    required
+                  id="senha"
+                  v-model="form.senha"
+                  :type="mostrarSenha ? 'text' : 'password'"
+                  class="form-control pe-5 campo-senha"
+                  placeholder="Digite sua senha"
+                  @focus="senhaEmFoco = true"
+                  @blur="senhaEmFoco = false"
+                  required
                 />
-            </div>
-
-            <div class="col-md-6 mb-3">
-                <label for="confSenha" class="form-label">Confirme a Senha</label>
-                <input
-                    id="confSenha"
-                    v-model="form.confSenha"
-                    type="password"
-                    class="form-control"
-                    placeholder="Digite novamente sua senha"
-                    required
-                />
+              
+                <button
+                  type="button"
+                  class="btn btn-sm border-0 bg-transparent position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                  @click="mostrarSenha = !mostrarSenha"
+                  :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
+                >
+                  <i :class="mostrarSenha ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+            
+              <ul
+                v-if="mostrarRegrasSenha"
+                class="list-unstyled small mt-2 mb-0"
+              >
+                <li :class="senhaRegras.tamanho ? 'text-success' : 'text-danger'">
+                  {{ senhaRegras.tamanho ? '✓' : '•' }} Pelo menos 8 caracteres
+                </li>
+                <li :class="senhaRegras.letra ? 'text-success' : 'text-danger'">
+                  {{ senhaRegras.letra ? '✓' : '•' }} Pelo menos 1 letra
+                </li>
+                <li :class="senhaRegras.numero ? 'text-success' : 'text-danger'">
+                  {{ senhaRegras.numero ? '✓' : '•' }} Pelo menos 1 número
+                </li>
+              </ul>
             </div>
             
+            <div class="col-md-6 mb-3">
+              <label for="confSenha" class="form-label">Confirme a senha</label>
+            
+              <div class="position-relative">
+                <input
+                  id="confSenha"
+                  v-model="form.confSenha"
+                  :type="mostrarConfSenha ? 'text' : 'password'"
+                  class="form-control pe-5 campo-senha"
+                  placeholder="Digite novamente sua senha"
+                  @focus="confirmacaoEmFoco = true"
+                  @blur="confirmacaoEmFoco = false"
+                  required
+                />
+              
+                <button
+                  type="button"
+                  class="btn btn-sm border-0 bg-transparent position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                  @click="mostrarConfSenha = !mostrarConfSenha"
+                  :aria-label="mostrarConfSenha ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'"
+                >
+                  <i :class="mostrarConfSenha ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                </button>
+              </div>
+            
+              <div
+                v-if="mostrarValidacaoConfirmacao"
+                class="small mt-2"
+                :class="senhasCoincidem ? 'text-success' : 'text-danger'"
+              >
+                {{ senhasCoincidem ? '✓ As senhas coincidem' : 'As senhas não coincidem' }}
+              </div>
+            </div>
           </div>
 
           <div v-if="erroCidades" class="alert alert-warning mt-2" role="alert">
@@ -146,8 +198,8 @@
           </div>
 
           <div class="d-grid mt-3">
-            <button type="submit" class="btn btn-primary">
-              Cadastrar
+            <button type="submit" class="btn btn-primary" :disabled="carregando">
+              {{ carregando ? 'Cadastrando...' : 'Cadastrar' }}
             </button>
           </div>
 
@@ -163,96 +215,171 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { listarCidades } from '../services/cidadeService'
-// import { cadastrar } from '../services/autenticacaoService'
+  import { computed, onMounted, reactive, ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { listarCidades } from '../services/cidadeService'
+  import { cadastrar } from '../services/autenticacaoService'
+  
+  const router = useRouter()
+  
+  const form = reactive({
+    nome: '',
+    email: '',
+    senha: '',
+    confSenha: '',
+    telefone: '',
+    sexo: '',
+    dataNascimento: '',
+    idCidade: ''
+  })
+  
+  const cidades = ref([])
+  const carregandoCidades = ref(false)
+  const carregando = ref(false)
+  const erroCidades = ref('')
+  const erro = ref('')
+  const sucesso = ref('')
+  
+  const senhaEmFoco = ref(false)
+  const confirmacaoEmFoco = ref(false)
 
-const form = reactive({
-  nome: '',
-  email: '',
-  senha: '',
-  telefone: '',
-  sexo: '',
-  dataNascimento: '',
-  idCidade: ''
-})
-
-const cidades = ref([])
-const carregandoCidades = ref(false)
-const erroCidades = ref('')
-const erro = ref('')
-const sucesso = ref('')
-
-const cidadeSelecionada = computed(() => {
-  return cidades.value.find(cidade => String(cidade.codIbge) === String(form.idCidade)) || null
-})
-
-const ufSelecionada = computed(() => {
-  return cidadeSelecionada.value ? cidadeSelecionada.value.uf : ''
-})
-
-async function carregarCidades() {
-  carregandoCidades.value = true
-  erroCidades.value = ''
-
-  try {
-    cidades.value = await listarCidades()
-  } catch (e) {
-    erroCidades.value = 'Não foi possível carregar as cidades.'
-    console.error(e)
-  } finally {
-    carregandoCidades.value = false
-  }
-}
-
-async function enviarCadastro() {
-  erro.value = ''
-  sucesso.value = ''
-
-  const hoje = new Date().toISOString().split('T')[0]
-
-  if (form.dataNascimento > hoje) {
-    erro.value = 'A data de nascimento não pode ser no futuro.'
-    return
-  }
-
-  if (form.senha !== form.confSenha) {
-    erro.value = 'As senhas não coincidem.'
-    return
-  }
-
-  const senhaForte = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/
-
-  if (!senhaForte.test(form.senha)) {
-    erro.value = 'A senha deve ter pelo menos 8 caracteres, incluindo letras e números.'
-    return
-  }
-
-  try {
-    const payload = {
-      nome: form.nome,
-      email: form.email,
-      senha: form.senha,
-      confSenha: form.confSenha,
-      telefone: form.telefone,
-      sexo: form.sexo,
-      dataNascimento: form.dataNascimento,
-      idCidade: form.idCidade
+  const mostrarSenha = ref(false)
+  const mostrarConfSenha = ref(false)
+  
+  const cidadeSelecionada = computed(() => {
+    return cidades.value.find(cidade => String(cidade.codIbge) === String(form.idCidade)) || null
+  })
+  
+  const ufSelecionada = computed(() => {
+    return cidadeSelecionada.value ? cidadeSelecionada.value.uf : ''
+  })
+  
+  const senhaRegras = computed(() => ({
+    tamanho: form.senha.length >= 8,
+    letra: /[A-Za-z]/.test(form.senha),
+    numero: /\d/.test(form.senha)
+  }))
+  
+  const senhaValida = computed(() => {
+    return Object.values(senhaRegras.value).every(Boolean)
+  })
+  
+  const senhasCoincidem = computed(() => {
+    return form.confSenha.length > 0 && form.senha === form.confSenha
+  })
+  
+  const mostrarRegrasSenha = computed(() => {
+    return senhaEmFoco.value || form.senha.length > 0
+  })
+  
+  const mostrarValidacaoConfirmacao = computed(() => {
+    return confirmacaoEmFoco.value || form.confSenha.length > 0
+  })
+  
+  function bloquearLetrasNoTelefone(event) {
+    const char = String.fromCharCode(event.which)
+    
+    if (!/[0-9]/.test(char)) {
+      event.preventDefault()
     }
-
-    console.log('Dados do cadastro:', payload)
-
-    // Quando o backend estiver pronto:
-    // await cadastrar(payload)
-
-    sucesso.value = 'Cadastro enviado com sucesso!'
-  } catch (e) {
-    erro.value = 'Não foi possível realizar o cadastro.'
-    console.error(e)
   }
-}
 
-onMounted(() => {
-  carregarCidades()
-})
+  function formatarTelefone(valor) {
+    const numeros = valor.replace(/\D/g, '').slice(0, 11)
+  
+    if (numeros.length <= 2) {
+      return numeros
+    }
+  
+    if (numeros.length <= 6) {
+      return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
+    }
+  
+    if (numeros.length <= 10) {
+      return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`
+    }
+  
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`
+  }
+  
+  function aoDigitarTelefone(event) {
+    form.telefone = formatarTelefone(event.target.value)
+  }
+  
+  async function carregarCidades() {
+    carregandoCidades.value = true
+    erroCidades.value = ''
+  
+    try {
+      cidades.value = await listarCidades()
+    } catch (e) {
+      erroCidades.value = 'Não foi possível carregar as cidades.'
+      console.error(e)
+    } finally {
+      carregandoCidades.value = false
+    }
+  }
+  
+  async function enviarCadastro() {
+    erro.value = ''
+    sucesso.value = ''
+  
+    const hoje = new Date().toISOString().split('T')[0]
+  
+    if (form.dataNascimento > hoje) {
+      erro.value = 'A data de nascimento não pode ser no futuro.'
+      return
+    }
+  
+    if (!senhaValida.value) {
+      erro.value = 'A senha ainda não atende aos requisitos.'
+      return
+    }
+  
+    if (!senhasCoincidem.value) {
+      erro.value = 'As senhas não coincidem.'
+      return
+    }
+  
+    if (!form.idCidade) {
+      erro.value = 'Selecione uma cidade.'
+      return
+    }
+  
+    carregando.value = true
+  
+    try {
+      const payload = {
+        nome: form.nome.trim(),
+        email: form.email.trim(),
+        senha: form.senha,
+        telefone: form.telefone.replace(/\D/g, ''),
+        sexo: form.sexo,
+        dataNascimento: form.dataNascimento,
+        codIbgeCidade: Number(form.idCidade)
+      }
+    
+      const resposta = await cadastrar(payload)
+      console.log('Cadastro realizado:', resposta)
+    
+      sucesso.value = 'Cadastro realizado com sucesso! Redirecionando para o login...'
+    
+      setTimeout(() => {
+        router.push('/login')
+      }, 1200)
+    } catch (e) {
+      erro.value =
+        e?.response?.data?.message ||
+        e?.response?.data?.erro ||
+        'Não foi possível realizar o cadastro.'
+    
+      console.error(e)
+    } finally {
+      carregando.value = false
+    }
+  }
+  
+  onMounted(() => {
+    carregarCidades()
+  })
 </script>
