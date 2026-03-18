@@ -38,6 +38,10 @@
             </button>
           </div>
 
+          <div class="text-center mt-3">
+            <RouterLink to="/cadastro" class="text-decoration-none">Não tem conta? Cadastre-se</RouterLink>
+          </div>
+
           <p v-if="mensagem" class="text-danger small text-center mb-0">
             {{ mensagem }}
           </p>

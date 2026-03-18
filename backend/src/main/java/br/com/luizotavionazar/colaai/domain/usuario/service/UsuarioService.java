@@ -18,17 +18,19 @@ public class UsuarioService {
 
     @Transactional
     public Usuario cadastrar(String email, String senha) {
-        if (usuarioRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("! E-mail já cadastrado");
+        String emailNormalizado = email.trim().toLowerCase();
+    
+        if (usuarioRepository.existsByEmail(emailNormalizado)) {
+            throw new IllegalArgumentException("E-mail já cadastrado");
         }
-
+    
         Usuario usuario = Usuario.builder()
-                .email(email)
+                .email(emailNormalizado)
                 .senhaHash(passwordEncoder.encode(senha))
                 .build();
-
+    
         atribuirPapel(usuario, PapelService.CLIENTE);
-
+    
         return usuarioRepository.save(usuario);
     }
 
