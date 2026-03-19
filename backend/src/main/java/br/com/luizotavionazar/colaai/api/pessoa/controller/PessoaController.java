@@ -7,6 +7,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/pessoa")
@@ -30,5 +32,11 @@ public class PessoaController {
     @GetMapping("/usuario/{idUsuario}")
     public ResponseEntity<PessoaResponse> buscarPoridUsuario(@PathVariable Integer idUsuario) {
         return ResponseEntity.ok(pessoaService.buscarPoridUsuario(idUsuario));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<PessoaResponse> buscarMinhaPessoa(@AuthenticationPrincipal Jwt jwt) {
+        Integer idUsuario = Integer.valueOf(jwt.getSubject());
+        return ResponseEntity.ok(pessoaService.buscarMinhaPessoa(idUsuario));
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import br.com.luizotavionazar.colaai.config.security.JwtService;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +30,8 @@ public class AutenticacaoService {
     private final CidadeRepository cidadeRepository;
     private final PessoaService pessoaService;
     private final PasswordEncoder passwordEncoder;
-
+    private final JwtService jwtService;
+    
     @Transactional
     public CadastroResponse cadastrar(CadastroRequest request) {
         String emailNormalizado = request.emailNormalizado();
@@ -74,20 +76,22 @@ public class AutenticacaoService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         String emailNormalizado = request.emailNormalizado();
-
+    
         Usuario usuario = usuarioRepository.findByEmail(emailNormalizado)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
-                        "E-mail inválido ou senha incorreta"
+                        "E-mail ou senha incorretos"
                 ));
-
+    
         if (!passwordEncoder.matches(request.senha(), usuario.getSenhaHash())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "E-mail inválido ou senha incorreta"
+                    "E-mail ou senha incorretos"
             );
         }
-
-        return LoginResponse.from(usuario);
+    
+        String token = jwtService.gerarToken(usuario);
+    
+        return LoginResponse.from(usuario, token, jwtService.getExpirationMinutes());
     }
 }

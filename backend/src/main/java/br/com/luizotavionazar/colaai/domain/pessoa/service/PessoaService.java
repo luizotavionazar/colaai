@@ -120,4 +120,15 @@ public class PessoaService {
             throw new IllegalStateException("Algoritmo de hash não disponível", ex);
         }
     }
+
+    @Transactional(readOnly = true)
+    public PessoaResponse buscarMinhaPessoa(Integer idUsuario) {
+        Pessoa pessoa = pessoaRepository.findByUsuarioId(idUsuario)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Pessoa não encontrada para o usuário autenticado"
+                ));
+    
+        return PessoaResponse.from(pessoa);
+    }
 }

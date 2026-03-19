@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import CadastroView from '../views/CadastroView.vue'
+import PerfilView from '../views/PerfilView.vue'
+import { getToken, isTokenExpired, logout } from '../services/autenticacaoService'
 
 const routes = [
   {
@@ -16,12 +18,38 @@ const routes = [
     path: '/cadastro',
     name: 'cadastro',
     component: CadastroView
+  },
+  {
+    path: '/perfil',
+    name: 'perfil',
+    component: PerfilView,
+    meta: { requiresAuth: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const token = getToken()
+
+  if (token && isTokenExpired()) {
+    logout()
+  }
+
+  if (to.meta.requiresAuth) {
+    if (!token || isTokenExpired()) {
+      return next('/login')
+    }
+  }
+
+  if ((to.path === '/login' || to.path === '/cadastro') && token && !isTokenExpired()) {
+    return next('/perfil')
+  }
+
+  next()
 })
 
 export default router

@@ -42,6 +42,11 @@
                 <i :class="mostrarSenha ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
               </button>
             </div>
+            <div class="text-left mt-3">
+              <RouterLink to="/recuperar-cadastro" class="text-decoration-none">
+                Esqueceu a senha? Recupere aqui
+              </RouterLink>
+            </div>
           </div>
 
           <div v-if="mensagem" class="alert alert-danger py-2 small" role="alert">
@@ -66,45 +71,46 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { login } from '../services/autenticacaoService'
-
-const email = ref('')
-const senha = ref('')
-const mensagem = ref('')
-const carregando = ref(false)
-const mostrarSenha = ref(false)
-
-async function fazerLogin() {
-  mensagem.value = ''
-
-  if (!email.value || !senha.value) {
-    mensagem.value = 'Preencha e-mail e senha.'
-    return
+  import { ref } from 'vue'
+  import { useRouter } from 'vue-router'
+  import { login, salvarSessao } from '../services/autenticacaoService'
+  
+  const router = useRouter()
+  
+  const email = ref('')
+  const senha = ref('')
+  const mensagem = ref('')
+  const carregando = ref(false)
+  const mostrarSenha = ref(false)
+  
+  async function fazerLogin() {
+    mensagem.value = ''
+  
+    if (!email.value || !senha.value) {
+      mensagem.value = 'Preencha e-mail e senha.'
+      return
+    }
+  
+    carregando.value = true
+  
+    try {
+      const resposta = await login({
+        email: email.value.trim(),
+        senha: senha.value
+      })
+    
+      salvarSessao(resposta)
+    
+      router.push('/perfil')
+    } catch (e) {
+      mensagem.value =
+        e?.response?.data?.message ||
+        e?.response?.data?.erro ||
+        'Não foi possível realizar o login.'
+    
+      console.error(e)
+    } finally {
+      carregando.value = false
+    }
   }
-
-  carregando.value = true
-
-  try {
-    const resposta = await login({
-      email: email.value.trim(),
-      senha: senha.value
-    })
-
-    console.log('Login realizado:', resposta)
-
-    // próximo passo:
-    // salvar token ou dados do usuário
-    // redirecionar para dashboard/home
-  } catch (e) {
-    mensagem.value =
-      e?.response?.data?.message ||
-      e?.response?.data?.erro ||
-      'Não foi possível realizar o login.'
-
-    console.error(e)
-  } finally {
-    carregando.value = false
-  }
-}
 </script>
