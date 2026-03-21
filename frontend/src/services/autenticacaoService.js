@@ -56,3 +56,20 @@ export function logout() {
   localStorage.removeItem(USER_KEY)
   localStorage.removeItem(EXPIRES_AT_KEY)
 }
+
+export async function iniciarRecuperacaoSenha(dados) {
+  const response = await authApi.post('/auth/recuperacao/iniciar', dados)
+  return response.data
+}
+
+export async function validarTokenRecuperacao(token) {
+  const response = await authApi.get('/auth/recuperacao/validar', {
+    params: { token }
+  })
+  return response.data
+}
+
+export async function redefinirSenha(dados) {
+  const response = await authApi.post('/auth/recuperacao/redefinir', dados)
+  return response.data
+}

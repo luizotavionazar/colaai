@@ -3,6 +3,8 @@ import LoginView from '../views/LoginView.vue'
 import CadastroView from '../views/CadastroView.vue'
 import PerfilView from '../views/PerfilView.vue'
 import { getToken, isTokenExpired, logout } from '../services/autenticacaoService'
+import RecuperarSenhaView from '../views/RecuperarSenhaView.vue'
+import RedefinirSenhaView from '../views/RedefinirSenhaView.vue'
 
 const routes = [
   {
@@ -24,6 +26,16 @@ const routes = [
     name: 'perfil',
     component: PerfilView,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/recuperar-senha',
+    name: 'recuperar-senha',
+    component: RecuperarSenhaView
+  },
+  {
+    path: '/redefinir-senha',
+    name: 'redefinir-senha',
+    component: RedefinirSenhaView
   }
 ]
 

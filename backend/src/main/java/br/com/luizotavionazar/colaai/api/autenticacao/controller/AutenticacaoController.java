@@ -4,12 +4,17 @@ import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroRequest;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.CadastroResponse;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginRequest;
 import br.com.luizotavionazar.colaai.api.autenticacao.dto.LoginResponse;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.MensagemResponse;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.RecuperacaoSenhaRequest;
+import br.com.luizotavionazar.colaai.api.autenticacao.dto.RedefinirSenhaRequest;
 import br.com.luizotavionazar.colaai.domain.autenticacao.service.AutenticacaoService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequestMapping("/auth")
@@ -32,5 +37,37 @@ public class AutenticacaoController {
         LoginResponse response = autenticacaoService.login(request);
     
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/recuperacao/iniciar")
+    public ResponseEntity<MensagemResponse> iniciarRecuperacaoSenha(
+            @Valid @RequestBody RecuperacaoSenhaRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(
+                autenticacaoService.iniciarRecuperacaoSenha(request, extrairIp(httpRequest))
+        );
+    }
+    
+    private String extrairIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+    
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+    
+        return request.getRemoteAddr();
+    }
+    
+    @GetMapping("/recuperacao/validar")
+    public ResponseEntity<MensagemResponse> validarTokenRecuperacao(@RequestParam String token) {
+        return ResponseEntity.ok(autenticacaoService.validarTokenRecuperacao(token));
+    }
+    
+    @PostMapping("/recuperacao/redefinir")
+    public ResponseEntity<MensagemResponse> redefinirSenha(
+            @Valid @RequestBody RedefinirSenhaRequest request
+    ) {
+        return ResponseEntity.ok(autenticacaoService.redefinirSenha(request));
     }
 }

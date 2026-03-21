@@ -43,7 +43,7 @@
               </button>
             </div>
             <div class="text-left mt-3">
-              <RouterLink to="/recuperar-cadastro" class="text-decoration-none">
+              <RouterLink to="/recuperar-senha" class="text-decoration-none">
                 Esqueceu a senha? Recupere aqui
               </RouterLink>
             </div>
