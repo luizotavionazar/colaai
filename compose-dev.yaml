@@ -1,38 +1,36 @@
 services:
   db:
-    image: postgres:18.2-alpine
+    image: postgres:18.2
     container_name: postgres_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${NOME_BD}
-      POSTGRES_USER: ${USUARIO_BD}
-      POSTGRES_PASSWORD: ${SENHA_BD}
+      # CONFIGURAÇÕES DO POSTGRESQL
+      POSTGRES_DB: colaai
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senhazona
       TZ: America/Sao_Paulo
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
+      - pgdata:/var/lib/postgresql
 
   pgadmin:
     image: dpage/pgadmin4:9.12.0
     container_name: pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${EMAIL_POSTGRES}
-      PGADMIN_DEFAULT_PASSWORD: ${SENHA_POSTGRES}
+      # CONFIGURAÇÕES DO PGADMIN
+      PGADMIN_DEFAULT_EMAIL: admin@colaai.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
       TZ: America/Sao_Paulo
     ports:
       - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+    labels:
+      org.springframework.boot.ignore: true
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
 volumes:
   pgdata:

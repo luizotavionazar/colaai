@@ -139,13 +139,16 @@
                 class="list-unstyled small mt-2 mb-0"
               >
                 <li :class="senhaRegras.tamanho ? 'text-success' : 'text-danger'">
-                  {{ senhaRegras.tamanho ? '✓' : '•' }} Pelo menos 8 caracteres
+                  {{ senhaRegras.tamanho ? '✓' : '✕' }} Pelo menos 8 caracteres
                 </li>
-                <li :class="senhaRegras.letra ? 'text-success' : 'text-danger'">
-                  {{ senhaRegras.letra ? '✓' : '•' }} Pelo menos 1 letra
+                <li :class="senhaRegras.maiuscula ? 'text-success' : 'text-danger'">
+                  {{ senhaRegras.maiuscula ? '✓' : '✕' }} Pelo menos 1 letra maiúscula
                 </li>
                 <li :class="senhaRegras.numero ? 'text-success' : 'text-danger'">
-                  {{ senhaRegras.numero ? '✓' : '•' }} Pelo menos 1 número
+                  {{ senhaRegras.numero ? '✓' : '✕' }} Pelo menos 1 número
+                </li>
+                <li :class="senhaRegras.especial ? 'text-success' : 'text-danger'">
+                  {{ senhaRegras.especial ? '✓' : '✕' }} Pelo menos 1 caractere especial
                 </li>
               </ul>
             </div>
@@ -180,7 +183,7 @@
                 class="small mt-2"
                 :class="senhasCoincidem ? 'text-success' : 'text-danger'"
               >
-                {{ senhasCoincidem ? '✓ As senhas coincidem' : 'As senhas não coincidem' }}
+                {{ senhasCoincidem ? '✓ As senhas coincidem' : '✕ As senhas não coincidem' }}
               </div>
             </div>
           </div>
@@ -219,6 +222,7 @@
   import { useRouter } from 'vue-router'
   import { listarCidades } from '../services/cidadeService'
   import { cadastrar } from '../services/autenticacaoService'
+  import { extrairMensagemErro } from '../utils/extrairMensagemErro'
   
   const router = useRouter()
   
@@ -256,8 +260,9 @@
   
   const senhaRegras = computed(() => ({
     tamanho: form.senha.length >= 8,
-    letra: /[A-Za-z]/.test(form.senha),
-    numero: /\d/.test(form.senha)
+    maiuscula: /\p{Lu}/u.test(form.senha),
+    numero: /\d/u.test(form.senha),
+    especial: /[^\p{L}\d\s]/u.test(form.senha)
   }))
   
   const senhaValida = computed(() => {
@@ -368,11 +373,11 @@
         router.push('/login')
       }, 1200)
     } catch (e) {
-      erro.value =
-        e?.response?.data?.message ||
-        e?.response?.data?.erro ||
+      erro.value = extrairMensagemErro(
+        e,
         'Não foi possível realizar o cadastro.'
-    
+      )
+        
       console.error(e)
     } finally {
       carregando.value = false

@@ -9,5 +9,5 @@ public interface TokenRecuperacaoSenhaRepository extends JpaRepository<TokenRecu
 
     Optional<TokenRecuperacaoSenha> findByTokenHash(String tokenHash);
 
-    Optional<TokenRecuperacaoSenha> findFirstByUsuarioIdAndUsadoEmIsNullAndInvalidadoEmIsNullOrderByDataCriacaoDesc(Integer usuarioId);
+    Optional<TokenRecuperacaoSenha> findFirstByUsuarioIdAndUsadoEmIsNullAndEncerradoEmIsNullOrderByDataCriacaoDesc(Integer usuarioId);
 }

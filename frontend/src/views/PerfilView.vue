@@ -56,6 +56,7 @@
     import { useRouter } from 'vue-router'
     import { buscarMeuPerfil } from '../services/pessoaService'
     import { logout } from '../services/autenticacaoService'
+    import { extrairMensagemErro } from '../utils/extrairMensagemErro'
 
     const router = useRouter()
 
@@ -80,9 +81,10 @@
       try {
         perfil.value = await buscarMeuPerfil()
       } catch (e) {
-        erro.value =
-          e?.response?.data?.message ||
+        erro.value = extrairMensagemErro(
+          e,
           'Não foi possível carregar o perfil.'
+        )
         console.error(e)
       } finally {
         carregando.value = false

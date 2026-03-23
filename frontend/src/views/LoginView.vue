@@ -74,6 +74,7 @@
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
   import { login, salvarSessao } from '../services/autenticacaoService'
+  import { extrairMensagemErro } from '../utils/extrairMensagemErro'
   
   const router = useRouter()
   
@@ -103,11 +104,11 @@
     
       router.push('/perfil')
     } catch (e) {
-      mensagem.value =
-        e?.response?.data?.message ||
-        e?.response?.data?.erro ||
+      mensagem.value = extrairMensagemErro(
+        e,
         'Não foi possível realizar o login.'
-    
+      )
+        
       console.error(e)
     } finally {
       carregando.value = false

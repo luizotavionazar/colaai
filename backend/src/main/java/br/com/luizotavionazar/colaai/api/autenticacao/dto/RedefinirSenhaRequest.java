@@ -1,5 +1,6 @@
 package br.com.luizotavionazar.colaai.api.autenticacao.dto;
 
+import br.com.luizotavionazar.colaai.domain.autenticacao.entity.PoliticaSenha;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -9,7 +10,12 @@ public record RedefinirSenhaRequest(
         String token,
 
         @NotBlank(message = "Nova senha é obrigatória")
-        @Size(min = 8, max = 100, message = "A senha deve ter entre 8 e 100 caracteres")
+        @Size(
+                min = PoliticaSenha.MIN_CARACTERES,
+                max = PoliticaSenha.MAX_CARACTERES,
+                message = "A senha deve ter entre " + PoliticaSenha.MIN_CARACTERES
+                        + " e " + PoliticaSenha.MAX_CARACTERES + " caracteres"
+        )
         String novaSenha
 ) {
 }

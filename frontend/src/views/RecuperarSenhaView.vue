@@ -48,6 +48,7 @@
 <script setup>
 import { ref } from 'vue'
 import { iniciarRecuperacaoSenha } from '../services/autenticacaoService'
+import { extrairMensagemErro } from '../utils/extrairMensagemErro'
 
 const email = ref('')
 const mensagem = ref('')
@@ -66,9 +67,10 @@ async function enviar() {
 
     mensagem.value = response.mensagem
   } catch (e) {
-    erro.value =
-      e?.response?.data?.message ||
+    erro.value = extrairMensagemErro(
+      e,
       'Não foi possível iniciar a recuperação.'
+    )
   } finally {
     carregando.value = false
   }

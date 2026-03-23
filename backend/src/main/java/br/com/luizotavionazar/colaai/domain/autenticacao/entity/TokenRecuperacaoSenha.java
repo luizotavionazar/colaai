@@ -39,8 +39,8 @@ public class TokenRecuperacaoSenha {
     @Column(name = "ipSolicitacao", length = 45)
     private String ipSolicitacao;
 
-    @Column(name = "invalidadoEm")
-    private LocalDateTime invalidadoEm;
+    @Column(name = "encerradoEm")
+    private LocalDateTime encerradoEm;
 
     @Column(name = "motivoEncerramento", length = 60)
     private String motivoEncerramento;
@@ -57,7 +57,7 @@ public class TokenRecuperacaoSenha {
         return usadoEm != null;
     }
 
-    public boolean invalidado() {
-        return invalidadoEm != null;
+    public boolean encerrado() {
+        return encerradoEm != null;
     }
 }

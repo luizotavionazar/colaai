@@ -1,5 +1,6 @@
 package br.com.luizotavionazar.colaai.domain.usuario.service;
 
+import br.com.luizotavionazar.colaai.domain.autenticacao.service.PoliticaSenhaService;
 import br.com.luizotavionazar.colaai.domain.usuario.entity.*;
 import br.com.luizotavionazar.colaai.domain.usuario.repository.PapelRepository;
 import br.com.luizotavionazar.colaai.domain.usuario.repository.UsuarioRepository;
@@ -15,22 +16,25 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PapelRepository papelRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PoliticaSenhaService politicaSenhaService;
 
     @Transactional
     public Usuario cadastrar(String email, String senha) {
         String emailNormalizado = email.trim().toLowerCase();
-
+    
         if (usuarioRepository.existsByEmail(emailNormalizado)) {
             throw new IllegalArgumentException("E-mail já cadastrado");
         }
-
+    
+        politicaSenhaService.validar(senha);
+    
         Usuario usuario = Usuario.builder()
                 .email(emailNormalizado)
                 .senhaHash(passwordEncoder.encode(senha))
                 .build();
-
+    
         atribuirPapel(usuario, PapelService.CLIENTE);
-
+    
         return usuarioRepository.save(usuario);
     }
 

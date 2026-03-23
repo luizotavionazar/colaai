@@ -5,6 +5,8 @@ import PerfilView from '../views/PerfilView.vue'
 import { getToken, isTokenExpired, logout } from '../services/autenticacaoService'
 import RecuperarSenhaView from '../views/RecuperarSenhaView.vue'
 import RedefinirSenhaView from '../views/RedefinirSenhaView.vue'
+import SetupView from '../views/SetupView.vue'
+import { obterStatusSetup } from '../services/setupService'
 
 const routes = [
   {
@@ -36,6 +38,11 @@ const routes = [
     path: '/redefinir-senha',
     name: 'redefinir-senha',
     component: RedefinirSenhaView
+  },
+  {
+    path: '/setup',
+    name: 'setup',
+    component: SetupView
   }
 ]
 
@@ -44,8 +51,22 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const token = getToken()
+
+  const publicPaths = ['/setup']
+
+  if (!publicPaths.includes(to.path)) {
+    try {
+      const status = await obterStatusSetup()
+
+      if (!status.setupConcluido) {
+        return next('/setup')
+      }
+    } catch {
+      return next('/setup')
+    }
+  }
 
   if (token && isTokenExpired()) {
     logout()

@@ -2,6 +2,7 @@ package br.com.luizotavionazar.colaai.api.autenticacao.dto;
 
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
+import br.com.luizotavionazar.colaai.domain.autenticacao.entity.PoliticaSenha;
 
 public record CadastroRequest(
 
@@ -15,7 +16,12 @@ public record CadastroRequest(
         String email,
 
         @NotBlank(message = "Senha é obrigatória")
-        @Size(min = 8, max = 100, message = "A senha deve ter entre 8 e 100 caracteres")
+        @Size(
+                min = PoliticaSenha.MIN_CARACTERES,
+                max = PoliticaSenha.MAX_CARACTERES,
+                message = "A senha deve ter entre " + PoliticaSenha.MIN_CARACTERES
+                        + " e " + PoliticaSenha.MAX_CARACTERES + " caracteres"
+        )
         String senha,
 
         @NotBlank(message = "Telefone é obrigatório")

@@ -39,13 +39,16 @@
 
           <ul v-if="mostrarRegrasSenha" class="list-unstyled small mt-2 mb-3">
             <li :class="senhaRegras.tamanho ? 'text-success' : 'text-danger'">
-              {{ senhaRegras.tamanho ? '✓' : '•' }} Pelo menos 8 caracteres
+              {{ senhaRegras.tamanho ? '✓' : '✕' }} Pelo menos 8 caracteres
             </li>
-            <li :class="senhaRegras.letra ? 'text-success' : 'text-danger'">
-              {{ senhaRegras.letra ? '✓' : '•' }} Pelo menos 1 letra
+            <li :class="senhaRegras.maiuscula  ? 'text-success' : 'text-danger'">
+              {{ senhaRegras.maiuscula  ? '✓' : '✕' }} Pelo menos 1 letra maiúscula
             </li>
             <li :class="senhaRegras.numero ? 'text-success' : 'text-danger'">
-              {{ senhaRegras.numero ? '✓' : '•' }} Pelo menos 1 número
+              {{ senhaRegras.numero ? '✓' : '✕' }} Pelo menos 1 número
+            </li>
+            <li :class="senhaRegras.especial ? 'text-success' : 'text-danger'">
+              {{ senhaRegras.especial ? '✓' : '✕' }} Pelo menos 1 caractere especial
             </li>
           </ul>
 
@@ -78,7 +81,7 @@
             class="small mt-2 mb-3"
             :class="senhasCoincidem ? 'text-success' : 'text-danger'"
           >
-            {{ senhasCoincidem ? '✓ As senhas coincidem' : 'As senhas não coincidem' }}
+            {{ senhasCoincidem ? '✓ As senhas coincidem' : '✕ As senhas não coincidem' }}
           </div>
 
           <div v-if="mensagem" class="alert alert-success py-2 small">
@@ -107,91 +110,94 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { redefinirSenha, validarTokenRecuperacao } from '../services/autenticacaoService'
+  import { computed, onMounted, ref } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
+  import { redefinirSenha, validarTokenRecuperacao } from '../services/autenticacaoService'
+  import { extrairMensagemErro } from '../utils/extrairMensagemErro'
 
-const route = useRoute()
-const router = useRouter()
+  const route = useRoute()
+  const router = useRouter()
 
-const token = ref('')
-const novaSenha = ref('')
-const confirmacao = ref('')
-const mensagem = ref('')
-const erro = ref('')
-const carregando = ref(false)
-const validando = ref(true)
-const tokenInvalido = ref(false)
-const senhaEmFoco = ref(false)
-const mostrarSenha = ref(false)
-const mostrarConfirmacao = ref(false)
+  const token = ref('')
+  const novaSenha = ref('')
+  const confirmacao = ref('')
+  const mensagem = ref('')
+  const erro = ref('')
+  const carregando = ref(false)
+  const validando = ref(true)
+  const tokenInvalido = ref(false)
+  const senhaEmFoco = ref(false)
+  const mostrarSenha = ref(false)
+  const mostrarConfirmacao = ref(false)
 
-const senhaRegras = computed(() => ({
-  tamanho: novaSenha.value.length >= 8,
-  letra: /[A-Za-z]/.test(novaSenha.value),
-  numero: /\d/.test(novaSenha.value)
-}))
+  const senhaRegras = computed(() => ({
+    tamanho: novaSenha.value.length >= 8,
+    maiuscula: /\p{Lu}/u.test(novaSenha.value),
+    numero: /\d/u.test(novaSenha.value),
+    especial: /[^\p{L}\d\s]/u.test(novaSenha.value)
+  }))
 
-const senhaValida = computed(() => Object.values(senhaRegras.value).every(Boolean))
-const senhasCoincidem = computed(() => confirmacao.value.length > 0 && novaSenha.value === confirmacao.value)
-const mostrarRegrasSenha = computed(() => senhaEmFoco.value || novaSenha.value.length > 0)
+  const senhaValida = computed(() => Object.values(senhaRegras.value).every(Boolean))
+  const senhasCoincidem = computed(() => confirmacao.value.length > 0 && novaSenha.value === confirmacao.value)
+  const mostrarRegrasSenha = computed(() => senhaEmFoco.value || novaSenha.value.length > 0)
 
-async function validarToken() {
-  validando.value = true
-  tokenInvalido.value = false
+  async function validarToken() {
+    validando.value = true
+    tokenInvalido.value = false
 
-  try {
-    token.value = route.query.token || ''
-    if (!token.value) {
+    try {
+      token.value = route.query.token || ''
+      if (!token.value) {
+        tokenInvalido.value = true
+        return
+      }
+
+      await validarTokenRecuperacao(token.value)
+    } catch (e) {
       tokenInvalido.value = true
+    } finally {
+      validando.value = false
+    }
+  }
+
+  async function enviar() {
+    mensagem.value = ''
+    erro.value = ''
+
+    if (!senhaValida.value) {
+      erro.value = 'A senha ainda não atende aos requisitos.'
       return
     }
 
-    await validarTokenRecuperacao(token.value)
-  } catch (e) {
-    tokenInvalido.value = true
-  } finally {
-    validando.value = false
+    if (!senhasCoincidem.value) {
+      erro.value = 'As senhas não coincidem.'
+      return
+    }
+
+    carregando.value = true
+
+    try {
+      const response = await redefinirSenha({
+        token: token.value,
+        novaSenha: novaSenha.value
+      })
+
+      mensagem.value = response.mensagem
+
+      setTimeout(() => {
+        router.push('/login')
+      }, 1500)
+    } catch (e) {
+      erro.value = extrairMensagemErro(
+        e,
+        'Não foi possível redefinir a senha.'
+      )
+    } finally {
+      carregando.value = false
+    }
   }
-}
 
-async function enviar() {
-  mensagem.value = ''
-  erro.value = ''
-
-  if (!senhaValida.value) {
-    erro.value = 'A senha ainda não atende aos requisitos.'
-    return
-  }
-
-  if (!senhasCoincidem.value) {
-    erro.value = 'As senhas não coincidem.'
-    return
-  }
-
-  carregando.value = true
-
-  try {
-    const response = await redefinirSenha({
-      token: token.value,
-      novaSenha: novaSenha.value
-    })
-
-    mensagem.value = response.mensagem
-
-    setTimeout(() => {
-      router.push('/login')
-    }, 1500)
-  } catch (e) {
-    erro.value =
-      e?.response?.data?.message ||
-      'Não foi possível redefinir a senha.'
-  } finally {
-    carregando.value = false
-  }
-}
-
-onMounted(() => {
-  validarToken()
-})
+  onMounted(() => {
+    validarToken()
+  })
 </script>

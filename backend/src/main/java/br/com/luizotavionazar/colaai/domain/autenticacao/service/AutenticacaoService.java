@@ -36,6 +36,8 @@ import br.com.luizotavionazar.colaai.config.security.JwtService;
 import br.com.luizotavionazar.colaai.domain.pessoa.repository.PessoaRepository;
 import br.com.luizotavionazar.colaai.domain.autenticacao.entity.ControleRecuperacaoSenha;
 import br.com.luizotavionazar.colaai.domain.autenticacao.repository.ControleRecuperacaoSenhaRepository;
+import br.com.luizotavionazar.colaai.api.common.exception.ExcecaoLimiteTentativas;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +55,7 @@ public class AutenticacaoService {
     private final TokenRecuperacaoSenhaRepository tokenRecuperacaoSenhaRepository;
     private final EmailService emailService;
     private final ControleRecuperacaoSenhaRepository controleRecuperacaoSenhaRepository;
+    private final PoliticaSenhaService politicaSenhaService;
 
     private static final long COOLDOWN_TOKEN_MINUTES = 2;
     private static final long EXPIRACAO_TOKEN_MINUTES = 30;
@@ -78,6 +81,8 @@ public class AutenticacaoService {
         Cidade cidade = cidadeRepository.findById(request.codIbgeCidade())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cidade não encontrada"));
 
+        politicaSenhaService.validar(request.senha());
+
         Usuario usuario = usuarioService.cadastrar(emailNormalizado, request.senha());
 
         Endereco endereco = enderecoService.cadastrarBasico(request.codIbgeCidade());
@@ -88,9 +93,7 @@ public class AutenticacaoService {
                 new UsuarioCadastradoEvent(
                         usuario.getId(),
                         request.nomeNormalizado(),
-                        usuario.getEmail()
-                )
-        );
+                        usuario.getEmail()));
 
         return CadastroResponse.from(usuario, request, cidade);
     }
@@ -116,30 +119,26 @@ public class AutenticacaoService {
     @Transactional(readOnly = true)
     public LoginResponse login(LoginRequest request) {
         String emailNormalizado = request.emailNormalizado();
-    
+
         Usuario usuario = usuarioRepository.findByEmail(emailNormalizado)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
-                        "E-mail ou senha incorretos"
-                ));
-    
+                        "E-mail ou senha incorretos"));
+
         if (!passwordEncoder.matches(request.senha(), usuario.getSenhaHash())) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
-                    "E-mail ou senha incorretos"
-            );
+                    "E-mail ou senha incorretos");
         }
-    
+
         String token = jwtService.gerarToken(usuario);
-    
+
         return LoginResponse.from(usuario, token, jwtService.getExpirationMinutes());
     }
 
     @Transactional
     public MensagemResponse iniciarRecuperacaoSenha(RecuperacaoSenhaRequest request, String ip) {
-        if (ipBloqueadoOuRegistrarTentativa(ip)) {
-            return mensagemGenericaRecuperacao();
-        }
+        validarLimitePorIp(ip);
 
         String emailNormalizado = request.emailNormalizado();
 
@@ -147,24 +146,24 @@ public class AutenticacaoService {
             LocalDateTime agora = LocalDateTime.now();
 
             tokenRecuperacaoSenhaRepository
-                    .findFirstByUsuarioIdAndUsadoEmIsNullAndInvalidadoEmIsNullOrderByDataCriacaoDesc(usuario.getId())
+                    .findFirstByUsuarioIdAndUsadoEmIsNullAndEncerradoEmIsNullOrderByDataCriacaoDesc(usuario.getId())
                     .ifPresent(tokenAnterior -> {
                         if (!tokenAnterior.expirado()) {
                             if (agora.isBefore(tokenAnterior.getDataCriacao().plusMinutes(COOLDOWN_TOKEN_MINUTES))) {
                                 return;
                             }
 
-                            tokenAnterior.setInvalidadoEm(agora);
+                            tokenAnterior.setEncerradoEm(agora);
                             tokenAnterior.setMotivoEncerramento(MOTIVO_SUBSTITUIDO);
                             return;
                         }
 
-                        tokenAnterior.setInvalidadoEm(agora);
+                        tokenAnterior.setEncerradoEm(agora);
                         tokenAnterior.setMotivoEncerramento(MOTIVO_EXPIRADO);
                     });
 
             boolean aindaExisteTokenAtivo = tokenRecuperacaoSenhaRepository
-                    .findFirstByUsuarioIdAndUsadoEmIsNullAndInvalidadoEmIsNullOrderByDataCriacaoDesc(usuario.getId())
+                    .findFirstByUsuarioIdAndUsadoEmIsNullAndEncerradoEmIsNullOrderByDataCriacaoDesc(usuario.getId())
                     .filter(token -> !token.expirado())
                     .isPresent();
 
@@ -193,33 +192,30 @@ public class AutenticacaoService {
 
         return mensagemGenericaRecuperacao();
     }
-    
+
     @Transactional
     public MensagemResponse redefinirSenha(RedefinirSenhaRequest request) {
         String tokenHash = gerarHash(request.token());
-    
+
         TokenRecuperacaoSenha token = tokenRecuperacaoSenhaRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Link de recuperação inválido ou expirado"
-                ));
-    
-        if (token.usado() || token.expirado() || token.invalidado()) {
+                        "Link de recuperação inválido ou expirado"));
+
+        if (token.usado() || token.expirado() || token.encerrado()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Link de recuperação inválido ou expirado"
-            );
+                    "Link de recuperação inválido ou expirado");
         }
-    
-        validarNovaSenha(request.novaSenha());
-    
+
+        politicaSenhaService.validar(request.novaSenha());
+
         Usuario usuario = token.getUsuario();
 
         if (passwordEncoder.matches(request.novaSenha(), usuario.getSenhaHash())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "A nova senha deve ser diferente da atual"
-            );
+                    "A nova senha deve ser diferente da atual");
         }
 
         LocalDateTime agora = LocalDateTime.now();
@@ -227,51 +223,36 @@ public class AutenticacaoService {
         usuario.setSenhaHash(passwordEncoder.encode(request.novaSenha()));
 
         token.setUsadoEm(agora);
-        token.setInvalidadoEm(agora);
+        token.setEncerradoEm(agora);
         token.setMotivoEncerramento(MOTIVO_UTILIZADO);
 
         return new MensagemResponse("Senha redefinida com sucesso");
     }
-    
+
     @Transactional(readOnly = true)
     public MensagemResponse validarTokenRecuperacao(String tokenBruto) {
         String tokenHash = gerarHash(tokenBruto);
-    
+
         TokenRecuperacaoSenha token = tokenRecuperacaoSenhaRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "Link de recuperação inválido ou expirado"
-                ));
-    
-        if (token.usado() || token.expirado() || token.invalidado()) {
+                        "Link de recuperação inválido ou expirado"));
+
+        if (token.usado() || token.expirado() || token.encerrado()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Link de recuperação inválido ou expirado"
-            );
+                    "Link de recuperação inválido ou expirado");
         }
-    
+
         return new MensagemResponse("Token válido");
     }
-    
-    private void validarNovaSenha(String senha) {
-        boolean tamanho = senha != null && senha.length() >= 8;
-        boolean letra = senha != null && senha.matches(".*[A-Za-z].*");
-        boolean numero = senha != null && senha.matches(".*\\d.*");
-    
-        if (!(tamanho && letra && numero)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "A nova senha deve ter pelo menos 8 caracteres, incluindo letras e números"
-            );
-        }
-    }
-    
+
     private String gerarTokenSeguro() {
         byte[] bytes = new byte[32];
         new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
-    
+
     private String gerarHash(String valor) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -284,11 +265,10 @@ public class AutenticacaoService {
 
     private MensagemResponse mensagemGenericaRecuperacao() {
         return new MensagemResponse(
-                "Se encontrarmos uma conta vinculada a esse e-mail, enviaremos as instruções de recuperação."
-        );
+                "Se encontrarmos uma conta vinculada a esse e-mail, enviaremos as instruções de recuperação.");
     }
 
-    private boolean ipBloqueadoOuRegistrarTentativa(String ip) {
+    private void validarLimitePorIp(String ip) {
         LocalDateTime agora = LocalDateTime.now();
 
         ControleRecuperacaoSenha controle = controleRecuperacaoSenhaRepository.findByIp(ip)
@@ -299,27 +279,41 @@ public class AutenticacaoService {
                         .build());
 
         if (controle.getBloqueadoAte() != null && agora.isBefore(controle.getBloqueadoAte())) {
-            return true;
+            long retryAfterSeconds = Duration.between(agora, controle.getBloqueadoAte()).toSeconds();
+            long minutosRestantes = Math.max(1, (retryAfterSeconds + 59) / 60);
+
+            throw new ExcecaoLimiteTentativas(
+                    "Muitas solicitações de recuperação a partir deste dispositivo ou rede. "
+                            + "Tente novamente em cerca de " + minutosRestantes + " minuto(s).",
+                    retryAfterSeconds);
         }
 
-        if (controle.getJanelaInicio() == null || agora.isAfter(controle.getJanelaInicio().plusMinutes(JANELA_IP_MINUTES))) {
+        if (controle.getJanelaInicio() == null
+                || agora.isAfter(controle.getJanelaInicio().plusMinutes(JANELA_IP_MINUTES))) {
             controle.setJanelaInicio(agora);
             controle.setQuantidade(1);
             controle.setBloqueadoAte(null);
             controleRecuperacaoSenhaRepository.save(controle);
-            return false;
+            return;
         }
 
         int novaQuantidade = controle.getQuantidade() + 1;
         controle.setQuantidade(novaQuantidade);
 
         if (novaQuantidade > LIMITE_TENTATIVAS_IP) {
-            controle.setBloqueadoAte(agora.plusMinutes(BLOQUEIO_IP_MINUTES));
+            LocalDateTime bloqueadoAte = agora.plusMinutes(BLOQUEIO_IP_MINUTES);
+            controle.setBloqueadoAte(bloqueadoAte);
             controleRecuperacaoSenhaRepository.save(controle);
-            return true;
+
+            long retryAfterSeconds = Duration.between(agora, bloqueadoAte).toSeconds();
+            long minutosRestantes = Math.max(1, (retryAfterSeconds + 59) / 60);
+
+            throw new ExcecaoLimiteTentativas(
+                    "Muitas solicitações de recuperação a partir deste dispositivo ou rede. "
+                            + "Tente novamente em cerca de " + minutosRestantes + " minuto(s).",
+                    retryAfterSeconds);
         }
 
         controleRecuperacaoSenhaRepository.save(controle);
-        return false;
     }
 }
